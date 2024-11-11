@@ -1,0 +1,10 @@
+[SUBJECT]
+
+Hello, World!
+
+[CONTENT]
+
+Nice to hear from you!
+
+Best wishes,
+sender
