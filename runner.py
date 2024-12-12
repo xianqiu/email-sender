@@ -4,44 +4,59 @@ from scheduler import *
 from sender import *
 
 
-class Runner(object):
+class Runner:
 
-    def __init__(self):
-        self._data_dir = Path('data')
-        self._jobs_dir = self._data_dir / 'jobs'
+    jobs_dir = Path('data/jobs')
+    logs_dir = Path('data/logs')
+    raw_file = Path('data/raw/data.csv')
+    jobs_done_path = logs_dir / 'jobs_done.csv'
 
-        if not self._data_dir.exists():
-            self._data_dir.mkdir()
-        if not self._jobs_dir.exists():
-            self._jobs_dir.mkdir()
+    @classmethod
+    def run_job_scheduler(cls, batch_size=100):
 
-    def run_job_scheduler(self, filename='data.csv', batch_size=100):
-
-        jobs_done_filename = 'jobs_done.csv'
+        if not cls.jobs_dir.exists():
+            cls.jobs_dir.mkdir()
 
         js = JobScheduler(
-            data_path=self._data_dir / filename,
-            done_path=self._jobs_dir / jobs_done_filename,
-            jobs_dir=self._jobs_dir,
+            data_path=cls.raw_file,
+            jobs_dir=cls.jobs_dir,
+            done_path=cls.jobs_done_path,
             batch_size=batch_size
         )
         js.clear_job_files()
         js.assign_jobs()
 
-    def run_sender(self, job_name, user, template):
+    @classmethod
+    def run_job_sender(cls, job_path, user_path, template_path):
 
-        user_path = self._data_dir / user
-        template_path = self._data_dir / template
-        receivers_path = self._jobs_dir / job_name
-        done_path = self._jobs_dir / 'jobs_done.csv'
+        if not cls.logs_dir.exists():
+            cls.logs_dir.mkdir()
 
         sender = BatchSender(
             user_path=user_path,
             template_path=template_path,
-            receivers_path=receivers_path,
-            done_path=done_path
+            receivers_path=job_path,
+            done_path=cls.jobs_done_path
         )
 
         sender.run()
 
+    @classmethod
+    def run_sender(cls, user_path, template_path, receivers):
+
+        if not cls.logs_dir.exists():
+            cls.logs_dir.mkdir()
+
+        if isinstance(receivers, str):
+            receivers = [receivers]
+
+        sender = BatchSender(
+            user_path=Path(user_path),
+            template_path=Path(template_path),
+            receivers_path=None,
+            done_path=cls.jobs_done_path,
+            receivers=receivers,
+        )
+
+        sender.run()
 

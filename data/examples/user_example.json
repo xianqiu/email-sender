@@ -1,5 +1,6 @@
 {
   "email": "user@server.com",
+  "name": "Lucy",
   "password": "123456",
   "server": "smtp.server.com",
   "port": "465",

@@ -22,14 +22,15 @@ class TestUser(object):
     }
     """
 
-    def __init__(self):
-        file_dir = Path('data')
-        filename = 'user_example.json'
-        self._user = User(file_dir / filename)
+    def __init__(self, data_dir):
+        data_dir = Path(data_dir)
+        filepath = data_dir / 'user_example.json'
+        self._user = User(filepath)
 
     def test(self):
         result = {
             'email': 'user@server.com',
+            'name': 'Lucy',
             'password': '123456',
             'server': 'smtp.server.com',
             'port': 465,
@@ -37,6 +38,9 @@ class TestUser(object):
         }
         assert self._user.email == result['email'], AssertionError(
             f"Email: got = {self._user.email}, expected = {result['email']}"
+        )
+        assert self._user.name == result['name'], AssertionError(
+            f"Email: got = {self._user.name}, expected = {result['name']}"
         )
         assert self._user.password == result['password'], AssertionError(
             f"Email: got = {self._user.password}, expected = {result['password']}"
@@ -69,22 +73,24 @@ class TestMessage(object):
     sender
     """
 
-    def __init__(self):
-        file_dir = Path('data')
+    def __init__(self, data_dir):
+        data_dir = Path(data_dir)
         filename = 'template_example.txt'
-        self._template_path = file_dir / filename
+        self._template_path = data_dir / filename
 
     def test(self):
         sender = 'sender@example.com'
         receiver = 'receiver@example.com'
+        sender_name = 'Lucy'
         message = Message(
             sender=sender,
             receiver=receiver,
-            template_path=self._template_path
+            template_path=self._template_path,
+            sender_name=sender_name
         )
         message.build()
         msg = message.get_msg()
-        assert msg['From'] == sender, AssertionError(
+        assert msg['From'] == f"{sender_name}<{sender}>", AssertionError(
             f"Sender: got = {msg['From']}, expected = {sender}"
         )
         assert msg['To'] == receiver, AssertionError(
@@ -104,11 +110,10 @@ class TestMessage(object):
 
 class TestEmailSender(object):
 
-    def __init__(self, user_path, to):
-        template_path = Path('data') / 'template_example.txt'
+    def __init__(self, user_path, template_path, to):
         proxy = {
             'host': '127.0.0.1',
-            'port': 7890
+            'port': 12334
         }
         self._sender = EmailSender(user_path, template_path, proxy)
         self._to = to
@@ -121,11 +126,11 @@ class TestEmailSender(object):
 
 class TestBatchSenderBySimulator(object):
 
-    def __init__(self, batch_size=10):
-        data_dir = Path('data')
+    def __init__(self, data_dir, done_dir, batch_size=10):
+        data_dir, done_dir = Path(data_dir), Path(done_dir)
         user_path = data_dir / 'user_example.json'
         template_path = data_dir / 'template_example.txt'
-        done_path = data_dir / 'jobs' / 'jobs_done.csv'
+        done_path = done_dir / 'jobs_done.csv'
         receivers = [f"user{i}@example.com" for i in range(batch_size)]
         self._bs = BatchSender(user_path=user_path,
                                template_path=template_path,
@@ -142,10 +147,10 @@ class TestBatchSenderBySimulator(object):
 
 class TestBatchSender(object):
 
-    def __init__(self, user_path, receivers):
-        data_dir = Path('data')
+    def __init__(self, data_dir, done_dir, user_path, receivers):
+        data_dir, done_dir = Path(data_dir), Path(done_dir)
         template_path = data_dir / 'template_example.txt'
-        done_path = data_dir / 'jobs' / 'jobs_done.csv'
+        done_path = done_dir / 'jobs_done.csv'
         self._bs = BatchSender(user_path=user_path,
                                template_path=template_path,
                                receivers_path=None,
@@ -155,3 +160,4 @@ class TestBatchSender(object):
     def run(self):
         self._bs.run()
         print(f">> [{self.__class__.__name__}] OK.")
+

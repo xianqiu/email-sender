@@ -9,8 +9,8 @@ __all__ = ['TestJobScheduler', 'TestEmailClassifier']
 
 class TestEmailClassifier(object):
 
-    def __init__(self):
-        data_dir = Path('data')
+    def __init__(self, data_dir):
+        data_dir = Path(data_dir)
         data_path = data_dir / 'data_example.csv'
         done_path = data_dir / 'jobs_done_example.csv'
         self._ec = EmailClassifier(data_path, done_path)
@@ -57,8 +57,8 @@ class TestEmailClassifier(object):
 
 class TestJobScheduler(object):
 
-    def __init__(self):
-        data_dir = Path('data')
+    def __init__(self, data_dir):
+        data_dir = Path(data_dir)
         data_path = data_dir / 'data_example.csv'
         done_path = data_dir / 'jobs_done_example.csv'
         self._batch_size = 2

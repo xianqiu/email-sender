@@ -1,17 +1,21 @@
 from pathlib import Path
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
 import re
 
 
 class Message(object):
 
-    def __init__(self, sender, receiver, template_path):
+    def __init__(self, sender, receiver, template_path, sender_name=None):
         self._sender = sender
         self._receiver = receiver
         self._template_path = template_path
+        self._sender_name = sender_name if sender_name else ''
         self._subject = ''
         self._content = ''
+        self._attachment = None
         self._msg = MIMEMultipart()
 
     def _load_template(self):
@@ -22,6 +26,7 @@ class Message(object):
                 res = self._parse_template(file.read())
                 self._subject = res['SUBJECT']
                 self._content = res['CONTENT']
+                self._attachment = res.get('ATTACHMENT')
         except FileNotFoundError:
             print(f"File not found: {self._template_path}")
         except Exception as e:
@@ -38,10 +43,14 @@ class Message(object):
         [CONTENT]
         World!
 
+        [ATTACHMENT]
+        data/attachment_example.txt
+
         返回
         {
             'SUBJECT': 'Hello!,
             'CONTENT': 'World!'
+            'ATTACHMENT': ['data/attachment_example.txt']
         }
         注意：需要去掉内容中第一行和最后一行的空格和换行符。
         """
@@ -54,6 +63,11 @@ class Message(object):
         for title, content in matches:
             # 去掉内容的首尾空格和换行符
             result[title.strip()] = content.strip()
+
+        if attachment := result.get('ATTACHMENT'):
+            result['ATTACHMENT'] = attachment.split('\n')
+        else:
+            result['ATTACHMENT'] = None
 
         return result
 
@@ -73,13 +87,30 @@ class Message(object):
         if not self._content:
             raise ValueError(f"Empty content!")
 
+    def _build_attachment(self):
+        if not self._attachment:
+            return
+        for filename in self._attachment:
+            file_dir = Path(self._template_path).parent
+            attachment = open(file_dir / filename, "rb")  # 以二进制模式打开文件
+            # 创建 MIMEBase 对象并编码
+            part = MIMEBase('application', 'octet-stream')
+            part.set_payload(attachment.read())
+            encoders.encode_base64(part)
+            part.add_header('Content-Disposition', f'attachment; filename={filename}')
+            self._msg.attach(part)
+            attachment.close()
+
     def build(self):
         self._load_template()
-        self._msg['From'] = self._sender
+        self._msg['From'] = f"{self._sender_name}<{self._sender}>"
         self._msg['To'] = self._receiver
         self._msg['Subject'] = self._subject
         self._check()
-        self._msg.attach(MIMEText(self._content, 'plain', 'utf-8'))
+        self._msg.attach(MIMEText(self._content,
+                                  'plain', 'utf-8'))
+        self._build_attachment()
+
         return self._msg
 
     def get_msg(self):

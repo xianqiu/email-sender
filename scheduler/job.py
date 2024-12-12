@@ -3,8 +3,6 @@ from pathlib import Path
 import random
 import os
 
-from pkg_resources import file_ns_handler
-
 from .email import EmailClassifier
 
 
@@ -124,7 +122,7 @@ class JobScheduler(object):
                 writer.writeheader()
                 # 写入数据
                 writer.writerows([{'EMAIL': em} for em in jobs])
-                print(f"Batch [{batch_id}] saved to file [{filename}].")
+                print(f"Batch [{batch_id}] saved to [{filepath}].")
         except Exception as e:
             print(f"Save Failed! batch_id={batch_id}", e)
 

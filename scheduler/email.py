@@ -1,4 +1,6 @@
 import csv
+from pathlib import Path
+
 
 def _read_column(filepath, col):
     """
@@ -8,6 +10,8 @@ def _read_column(filepath, col):
     :return: list
     """
     res = []
+    if not Path(filepath).exists():
+        return res
     try:
         with open(filepath, mode='r', encoding='utf-8') as csvfile:
             reader = csv.DictReader(csvfile)

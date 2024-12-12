@@ -3,6 +3,7 @@ from time import sleep
 import csv
 from datetime import datetime
 from pathlib import Path
+import json
 
 import socks
 
@@ -13,15 +14,28 @@ from .log import logger
 
 class EmailSender(object):
 
-    def __init__(self, user_path, template_path, proxy=None):
+    def __init__(self, user_path, template_path, proxy_path=None):
         self._user = User(user_path)
         self._template_path = template_path
         self._smtp = smtplib.SMTP_SSL if self._user.ssl else smtplib.SMTP
+        proxy = self._load_proxy(proxy_path)
         self._set_proxy(proxy)
 
     @staticmethod
+    def _load_proxy(proxy_path):
+        proxy_path = Path(proxy_path)
+        if not proxy_path.exists():
+            return None
+        try:
+            with open(proxy_path, 'r', encoding='utf-8') as file:
+                proxy = json.load(file)  # 解析 JSON 数据
+                return proxy
+        except Exception as e:
+            print(f"Proxy file reading error: {e}")
+            return None
+
+    @staticmethod
     def _set_proxy(proxy):
-        # 设置代理
         if not proxy:
             return
         host = proxy['host']
@@ -47,7 +61,9 @@ class EmailSender(object):
         return Message(
             sender=self._user.email,
             receiver=to,
-            template_path=self._template_path).build()
+            template_path=self._template_path,
+            sender_name=self._user.name
+        ).build()
 
     def send(self, to):
         msg = self._build_message(to)
@@ -65,11 +81,13 @@ class EmailSender(object):
 
 class EmailSenderSimulator(EmailSender):
 
+    # For testing.
+
     def send(self, to):
         try:
             self._build_message(to)
-            sleep(0.1) # login
-            sleep(0.5) # send
+            sleep(0.1) # simulate: login
+            sleep(0.5) # simulate: send
             status = 'OK'
         except Exception as e:
             print("Fail to build message", e)
@@ -80,23 +98,21 @@ class EmailSenderSimulator(EmailSender):
 class BatchSender(object):
 
     _config = {
-        'proxy': {
-            'host': '127.0.0.1',
-            'port': 7890
-        },
         'gap_time': 10, # 两个任务之间的间隔时长，单位：秒
         'receivers': [],  # 用于测试，如果非空，则 self._receivers = receivers
         'simulate': False,  # 用于测试, True 模拟发送邮件
+        'proxy_filename': 'proxy.json'  # proxy.json 与 user_path 在同一个文件夹下
     }
 
     def __init__(self, user_path, template_path,
                  receivers_path, done_path,
                  **kwargs):
 
-        self._user_path = user_path
-        self._template_path = template_path
-        self._receivers_path = receivers_path
-        self._done_path = done_path
+        self._user_path = Path(user_path)
+        self._template_path = Path(template_path)
+        self._receivers_path = Path(receivers_path) if receivers_path else None
+        self._done_path = Path(done_path)
+        self._proxy_path = self._user_path.parent / self._config['proxy_filename']
 
         for k, v in kwargs.items():
             if k in self._config.keys():
@@ -116,7 +132,7 @@ class BatchSender(object):
                 for row in reader:
                     self._receivers.append(row['EMAIL'])
         except Exception as e:
-            print(f"Error reading {self._receivers_path}: {e}")
+            print(f"Error reading job file {self._receivers_path}: {e}")
 
     def _save_done(self, receiver, status):
         header = ['EMAIL', 'TIME', 'STATUS']
@@ -135,12 +151,12 @@ class BatchSender(object):
         logger.info(action="loading jobs", job_number=len(self._receivers))
         sender = EmailSender(self._user_path,
                              self._template_path,
-                             self._config['proxy'])
+                             self._proxy_path)
         # 模拟发送邮件，用于测试
         if self._config['simulate']:
             sender = EmailSenderSimulator(self._user_path,
                              self._template_path,
-                             self._config['proxy'])
+                             self._proxy_path)
         i = 0
         total = len(self._receivers)
         for re in self._receivers:

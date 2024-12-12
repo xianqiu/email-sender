@@ -7,6 +7,7 @@ class User(object):
         self._filepath = filepath
         conf = self._load_conf()
         self.email = conf['email']
+        self.name = conf['name']
         self.password = str(conf['password'])
         self.server = conf['server']
         self.port = int(conf['port'])

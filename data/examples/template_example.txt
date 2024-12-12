@@ -8,3 +8,6 @@ Nice to hear from you!
 
 Best wishes,
 sender
+
+[ATTACHMENT]
+attachment_example.txt
